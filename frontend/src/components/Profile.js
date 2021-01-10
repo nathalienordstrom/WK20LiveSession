@@ -22,25 +22,30 @@ export const Profile = () => {
       // Include the accessToken to get the protected endpoint
       headers: { Authorization: accessToken },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw "Profile test failed";
+        }
+        return res.json();
+      })
       // SUCCESS: Do something with the information we got back
       .then((json) => loginSuccess(json))
       .catch((err) => loginFailed(err)); //401
   };
+  if (!accessToken) {
+    return <></>;
+  }
 
   return (
-    <div>
-      <h1>Profile</h1>
-      <h2>Status :</h2>
-      <h4>Response :</h4>
-      <p>{`${statusMessage}`}</p>
-      <h4>userId :</h4>
+    <section class="profile">
+      <h2>Profile:</h2>
+      <h4>userId:</h4>
       <p> {`${userId}`}</p>
-      <h4>accessToken :</h4>
+      <h4>accessToken:</h4>
       <p> {`${accessToken}`}</p>
       <input type="submit" onClick={login} value="Test Login" />
       <input type="submit" onClick={logout} value="Test Logout" />
-    </div>
+    </section>
   );
 };
 export default Profile;

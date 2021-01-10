@@ -15,3 +15,9 @@ code {
 p {
   font-size: 14px;
 }
+
+section {
+  flex: auto;
+  flex-direction: column;
+  margin: 8px;
+}

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import LoginForm from "./components/LoginForm";
+import { Status } from "./components/Status";
+import { Profile } from "./components/Profile";
 import { Provider } from "react-redux";
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { user } from "./reducers/user";
@@ -29,6 +31,8 @@ export const App = () => {
   };
   return (
     <Provider store={store}>
+      <Status />
+      <Profile />
       <LoginForm />
     </Provider>
   );

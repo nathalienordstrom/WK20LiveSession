@@ -24,7 +24,12 @@ export const LoginForm = () => {
       body: JSON.stringify({ name, password }),
       headers: { "Content-Type": "application/json" },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw "Signup Failed";
+        }
+        return res.json();
+      })
       .then((json) => handleLoginSuccess(json))
       .catch((err) => handleLoginFailed(err));
   };
@@ -38,46 +43,48 @@ export const LoginForm = () => {
       body: JSON.stringify({ name, password }),
       headers: { "Content-Type": "application/json" },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw "Login Failed";
+        }
+        return res.json();
+      })
       .then((json) => handleLoginSuccess(json))
       .catch((err) => handleLoginFailed(err));
   };
 
-  if (!accessToken) {
-    // If user is logged out, show login form
-    return (
-      <div>
-        <Profile />
-        <form>
-          <h1>sign up</h1>
-          <label>
-            name
-            <input
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <label>
-            password
-            <input
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <button type="submit" onClick={handleSignup}>
-            Sign-Up
-          </button>
-          <button type="submit" onClick={handleLogin}>
-            Login
-          </button>
-        </form>
-      </div>
-    );
-  } else {
-    // If user is logged in, show profile
-    return <Profile />;
+  if (accessToken) {
+    return <></>;
   }
+  // If user is logged out, show login form
+  return (
+    <section class="login-form">
+      <form>
+        <h1>Sign Up/Login:</h1>
+        <label>
+          name
+          <input
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label>
+          password
+          <input
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+        <button type="submit" onClick={handleSignup}>
+          Sign-Up
+        </button>
+        <button type="submit" onClick={handleLogin}>
+          Login
+        </button>
+      </form>
+    </section>
+  );
 };
 export default LoginForm;
