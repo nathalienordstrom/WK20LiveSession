@@ -11,9 +11,18 @@ export const LoginForm = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLoginSuccess = (loginResponse) => {};
+  const handleLoginSuccess = (loginResponse) => {
+    dispatch(
+      user.actions.setAccessToken({ accessToken: loginResponse.accessToken })
+    );
+    dispatch(user.actions.setUserId({ userId: loginResponse.userId }));
+    dispatch(user.actions.setStatusMessage({ statusMessage: "Login Success" }));
+  };
 
-  const handleLoginFailed = (loginError) => {};
+  const handleLoginFailed = (loginError) => {
+    dispatch(user.actions.setAccessToken({ accessToken: null }));
+    dispatch(user.actions.setStatusMessage({ statusMessage: loginError }));
+  };
 
   // To sign up a user.
   const handleSignup = (event) => {
