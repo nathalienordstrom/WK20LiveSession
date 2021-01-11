@@ -1,15 +1,16 @@
-import express from "express";
-import bodyParser from "body-parser";
-import cors from "cors";
-import mongoose from "mongoose";
-import crypto from "crypto";
-import bcrypt from "bcrypt-nodejs";
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
-const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/auth";
+const SALT = bcrypt.genSaltSync(10);
+const mongoUrl = process.env.MONGO_URL || 'mongodb://localhost/auth';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
 mongoose.Promise = Promise;
 
-const User = mongoose.model("User", {
+const User = mongoose.model('User', {
   name: {
     type: String,
     unique: true,
@@ -20,7 +21,7 @@ const User = mongoose.model("User", {
   },
   accessToken: {
     type: String,
-    default: () => crypto.randomBytes(128).toString("hex"),
+    default: () => crypto.randomBytes(128).toString('hex'),
   },
 });
 
@@ -35,7 +36,7 @@ app.use(bodyParser.json());
 const authenticateUser = async (req, res, next) => {
   try {
     const user = await User.findOne({
-      accessToken: req.header("Authorization"),
+      accessToken: req.header('Authorization'),
     });
 
     if (user) {
@@ -44,37 +45,37 @@ const authenticateUser = async (req, res, next) => {
     } else {
       res
         .status(401)
-        .json({ loggedOut: true, message: "Please try logging in again" });
+        .json({ loggedOut: true, message: 'Please try logging in again' });
     }
   } catch (err) {
     res
       .status(403)
-      .json({ message: "Access token is missing or wrong", errors: err });
+      .json({ message: 'Access token is missing or wrong', errors: err });
   }
 };
 
 // Create user  - sign up
-app.post("/users", async (req, res) => {
+app.post('/users', async (req, res) => {
   try {
     const { name, password } = req.body;
     const user = await new User({
       name,
-      password: bcrypt.hashSync(password),
+      password: bcrypt.hashSync(password, SALT),
     }).save();
     res.status(201).json({ userId: user._id, accessToken: user.accessToken });
   } catch (err) {
-    res.status(400).json({ message: "Could not create user", errors: err });
+    res.status(400).json({ message: 'Could not create user', errors: err });
   }
 });
 
 // Secure endpoint, user needs to be logged in to access this.
-app.get("/users/:id", authenticateUser);
-app.get("/users/:id", (req, res) => {
+app.get('/users/:id', authenticateUser);
+app.get('/users/:id', (req, res) => {
   res.status(501).send();
 });
 
 // login user
-app.post("/sessions", async (req, res) => {
+app.post('/sessions', async (req, res) => {
   try {
     const { name, password } = req.body;
     const user = await User.findOne({ name });
