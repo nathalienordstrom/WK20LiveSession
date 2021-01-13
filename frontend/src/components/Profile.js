@@ -1,30 +1,71 @@
-import React, { useState, useEffect } from "react";
-import { user } from "../reducers/user";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState, useEffect } from 'react';
+import { user } from '../reducers/user';
+import { useDispatch, useSelector } from 'react-redux';
 
-const URL = "http://localhost:8080/users";
+const URL = 'http://localhost:8080/users';
 export const Profile = () => {
   const dispatch = useDispatch();
   const accessToken = useSelector((store) => store.user.login.accessToken);
   const userId = useSelector((store) => store.user.login.userId);
-  const statusMessage = useSelector((store) => store.user.login.statusMessage);
 
-  const loginSuccess = (loginResponse) => {};
+  const loginSuccess = (loginResponse) => {
+    dispatch(
+      user.actions.setStatusMessage({
+        statusMessage: loginResponse.secretMessage,
+      })
+    );
+  };
 
-  const loginFailed = (loginError) => {};
+  const loginFailed = (loginError) => {
+    dispatch(user.actions.setAccessToken({ accessToken: null }));
+    dispatch(user.actions.setStatusMessage({ statusMessage: loginError }));
+  };
 
-  const logout = () => {};
+  const logoutSuccess = () => {
+    dispatch(
+      user.actions.setStatusMessage({
+        statusMessage: 'Logout success',
+      })
+    );
+    dispatch(user.actions.setAccessToken({ accessToken: null }));
+  };
 
-  const login = () => {
+  const logoutFailed = (logoutError) => {
+    dispatch(
+      user.actions.setStatusMessage({
+        statusMessage: logoutError,
+      })
+    );
+  };
+
+  const logout = () => {
     // Include userId in the path
-    fetch(`${URL}/${userId}`, {
-      method: "GET",
+    fetch(`${URL}/logout`, {
+      method: 'POST',
       // Include the accessToken to get the protected endpoint
       headers: { Authorization: accessToken },
     })
       .then((res) => {
         if (!res.ok) {
-          throw "Profile test failed";
+          throw 'Failed to logout';
+        }
+        return res.json();
+      })
+      // SUCCESS: Do something with the information we got back
+      .then((json) => logoutSuccess(json))
+      .catch((err) => logoutFailed(err));
+  };
+
+  const getSecret = () => {
+    // Include userId in the path
+    fetch(`${URL}/${userId}/secret`, {
+      method: 'GET',
+      // Include the accessToken to get the protected endpoint
+      headers: { Authorization: accessToken },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw 'Failed to retrieve secret';
         }
         return res.json();
       })
@@ -43,7 +84,7 @@ export const Profile = () => {
       <p> {`${userId}`}</p>
       <h4>accessToken:</h4>
       <p> {`${accessToken}`}</p>
-      <input type="submit" onClick={login} value="Test Login" />
+      <input type="submit" onClick={getSecret} value="Test Secret Endpoint" />
       <input type="submit" onClick={logout} value="Test Logout" />
     </section>
   );
