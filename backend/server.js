@@ -9,7 +9,7 @@ const mongoUrl = process.env.MONGO_URL || 'mongodb://localhost/auth';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
 mongoose.Promise = Promise;
 
-const User = mongoose.model('User', {
+const userSchema = new mongoose.Schema({
   name: {
     type: String,
     unique: true,
@@ -18,6 +18,7 @@ const User = mongoose.model('User', {
   password: {
     type: String,
     required: true,
+    minLength: 5,
   },
   accessToken: {
     type: String,
@@ -25,6 +26,40 @@ const User = mongoose.model('User', {
     unique: true,
   },
 });
+
+userSchema.pre('save', async function (next) {
+  const user = this;
+
+  if (!user.isModified('password')) {
+    return next();
+  }
+
+  const salt = bcrypt.genSaltSync();
+  console.log(`PRE- password before hash: ${user.password}`);
+  user.password = bcrypt.hashSync(user.password, salt);
+  console.log(`PRE- password after  hash: ${user.password}`);
+
+  // Continue with the save
+  next();
+});
+
+const authenticateUser = async (req, res, next) => {
+  try {
+    const accessToken = req.header('Authorization');
+    const user = await User.findOne({ accessToken });
+    if (!user) {
+      throw 'User not found';
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    const errorMessage = 'Please try logging in again';
+    console.log(errorMessage);
+    res.status(401).json({ error: errorMessage });
+  }
+};
+
+const User = mongoose.model('User', userSchema);
 
 //   PORT=9000 npm start
 const port = process.env.PORT || 8080;
@@ -38,10 +73,9 @@ app.use(bodyParser.json());
 app.post('/users', async (req, res) => {
   try {
     const { name, password } = req.body;
-    const salt = bcrypt.genSaltSync();
     const user = await new User({
       name,
-      password: bcrypt.hashSync(password, salt),
+      password,
     }).save();
     res.status(200).json({ userId: user._id, accessToken: user.accessToken });
   } catch (err) {
@@ -64,9 +98,32 @@ app.post('/sessions', async (req, res) => {
   }
 });
 
+app.get('/secret', authenticateUser);
+app.get('/secret', async (req, res) => {
+  console.log(`User from authenticateUser: ${req.user}`);
+  const secretMessage = `We can modify this secret message for ${req.user.name}`;
+  res.status(200).json({ secretMessage });
+});
+
 // Get user specific information
-app.get('/users/:id', async (req, res) => {
-  res.status(501).send();
+app.get('/users/:id/profile', authenticateUser);
+app.get('/users/:id/profile', async (req, res) => {
+  const user = await User.findOne({ _id: req.params.id });
+  const publicProfileMessage = `This is a public profile message for ${user.name}`;
+  const privateProfileMessage = `This is a private profile message for ${user.name}`;
+
+  console.log(`Authenticated req.user._id: '${req.user._id.$oid}'`);
+  console.log(`Requested     user._id    : '${user._id}'`);
+  console.log(`Equal   : ${req.user_id == user._id}`);
+
+  // Decide private or public here
+  if (req.user._id.$oid === user._id.$oid) {
+    // Private
+    res.status(200).json({ profileMessage: privateProfileMessage });
+  } else {
+    // Public information or Forbidden (403) because the users don't match
+    res.status(200).json({ profileMessage: publicProfileMessage });
+  }
 });
 
 // Start the server
