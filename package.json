@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "postinstall": "npm install --prefix backend"
+  },
+  "dependencies": {
+    "@babel/helper-compilation-targets": "^7.12.5",
+    "mongoose": "^5.11.13"
   }
 }
