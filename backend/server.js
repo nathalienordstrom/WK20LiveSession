@@ -10,26 +10,18 @@ const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/auth";
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true });
 mongoose.Promise = Promise;
 
-/*
-BACK
-- SQL Injection for mongo
-- bcrypt and access token
-- try/catch in the backend
-- Print error message from catch
-FRONT
-- Fetch to login
-- Access Token in the frontend
-- Github in groups
-*/
 
-const User = mongoose.model("User", {
+const userSchema = new mongoose.Schema({
   name: {
     type: String,
     unique: true,
+    required: true,
+    minlength: 2,
   },
   password: {
     type: String,
     required: true,
+    minlength: 5,
   },
   accessToken: {
     type: String,
@@ -37,6 +29,41 @@ const User = mongoose.model("User", {
     unique: true,
   },
 });
+
+userSchema.pre('save', async function(next) {
+  const user = this;
+
+  if(!user.isModified('password')){
+    return next();
+  }
+
+  const salt = bcrypt.genSaltSync();
+  console.log(`PRE: password before hash: ${user.password}`)
+  user.password = bcrypt.hashSync(user.password, salt);
+  console.log(`PRE: password after hash: ${user.password}`)
+
+  //continue with the save
+  next();
+});
+
+const User = mongoose.model("User", userSchema)
+
+// const User = mongoose.model("User", {
+//   name: {
+//     type: String,
+//     unique: true,
+//   },
+//   password: {
+//     type: String,
+//     required: true,
+//     minlength: 5,
+//   },
+//   accessToken: {
+//     type: String,
+//     default: () => crypto.randomBytes(128).toString("hex"),
+//     unique: true,
+//   },
+// });
 
 //   PORT=9000 npm start
 const port = process.env.PORT || 8080;
@@ -47,17 +74,29 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const authenticateUser = async (req, res, next) => {
-  next();
+  try{
+    const accessToken = req.header('Authorization');
+    const user = await User.findOne({accessToken});
+    if(!user){
+      throw "User not found"
+    }
+    req.user = user;
+    next();
+  }catch (err){
+    const errorMessage = "Please try logging in again";
+    console.log(errorMessage);
+    res.status(401).json({error: errorMessage});
+  }
+
 };
 
 // Sign-up
 app.post("/users", async (req, res) => {
   try {
     const { name, password } = req.body;
-    const SALT = bcrypt.genSaltSync(10)
     const user = await new User({ 
       name, 
-      password: bcrypt.hashSync(password, SALT),
+      password,
     }).save();
     res.status(200).json({ userId: user._id, accessToken: user.accessToken });
   } catch (err) {
@@ -82,11 +121,36 @@ app.post("/sessions", async (req, res) => {
   res.status(501).send();
 });
 
+app.get('/secret', authenticateUser);
+app.get('/secret', async (req, res) => {
+  console.log(`User from authenticateUser: ${req.user.name} `)
+  const secretMessage = `This is a secret message for ${req.user.name}`;
+  res.status(200).json({ secretMessage });
+});
 
 
 // Secure endpoint, user needs to be logged in to access this.
-app.get("/users/:id", authenticateUser);
-app.get("/users/:id", (req, res) => { });
+app.get('/users/:id/profile', authenticateUser);
+app.get('/users/:id/profile', async (req, res) => {
+  const user = await User.findOne({_id: req.params.id});
+  const publicProfileMessage = `This is a public profile message for ${user.name}`;
+  const privateProfileMessage = `This is a private profile messafe for ${user.name}`;
+
+  console.log(`Authenticated req.user._id: '${req.user._id.$oid}'`);
+  console.log(`Requested user._id : ${user._id}'`);
+  console.log(`Equal: ${req.user._id == user._id}`);
+
+  // Decide private or public message here
+  if (req.user._id.$oid == user._id.$oid) {
+    // Private
+    res.status(200).json({ profileMessage: privateProfileMessage });
+  } else {
+    // Public information or Forbidden (403) because the users don´t match
+    res.status(200).json({ profileMessage: publicProfileMessage });
+  }
+
+});
+
 
 // Start the server
 app.listen(port, () => {
